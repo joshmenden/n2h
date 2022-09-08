@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jomei/notionapi"
+	"github.com/joshmenden/n2h/internal/notionfind"
 )
 
 var (
@@ -16,6 +17,7 @@ func stringFromBlock(page *notionapi.Page, block notionapi.Block, prefix *string
 	var result string
 	var err error
 	var prefixstr string
+
 	if prefix == nil {
 		prefixstr = ""
 	} else {
@@ -53,6 +55,23 @@ func stringFromBlock(page *notionapi.Page, block notionapi.Block, prefix *string
 		result = fmt.Sprintf("%s%s\n", prefixstr, result)
 	default:
 		return nil, fmt.Errorf("currently do not support %s", block.GetType())
+	}
+
+	if block.GetHasChildren() {
+		children, err := notionfind.GetAllPaginatedBlocks(block.GetID())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, child := range children {
+			// tab := "\t"
+			childStr, err := stringFromBlock(page, child, nil)
+			if err != nil {
+				return nil, err
+			}
+
+			result = fmt.Sprintf("%s%s", result, *childStr)
+		}
 	}
 
 	return &result, nil

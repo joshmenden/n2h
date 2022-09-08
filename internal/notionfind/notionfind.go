@@ -20,7 +20,7 @@ func Content(pageTitle, statusProperty, status *string) (*notionapi.Page, []noti
 		return nil, nil, err
 	}
 
-	blocks, err := getAllPaginatedBlocks(notionapi.BlockID(page.ID))
+	blocks, err := GetAllPaginatedBlocks(notionapi.BlockID(page.ID))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -112,7 +112,7 @@ func findContentPage(db *notionapi.Database, pageTitle, statusProperty, status *
 	return &best, nil
 }
 
-func getAllPaginatedBlocks(parentBlockID notionapi.BlockID) (blocks []notionapi.Block, err error) {
+func GetAllPaginatedBlocks(parentBlockID notionapi.BlockID) (blocks []notionapi.Block, err error) {
 	pagination := notionapi.Pagination{
 		StartCursor: "",
 		PageSize:    100,

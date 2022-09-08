@@ -5,7 +5,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/aws/aws-sdk-go/aws"
 	"github.com/jomei/notionapi"
 )
 
@@ -13,44 +12,55 @@ var (
 	pageBuilder strings.Builder
 )
 
-func stringFromBlock(page *notionapi.Page, block notionapi.Block) (*string, error) {
+func stringFromBlock(page *notionapi.Page, block notionapi.Block, prefix *string) (*string, error) {
+	var result string
+	var err error
+	var prefixstr string
+	if prefix == nil {
+		prefixstr = ""
+	} else {
+		prefixstr = *prefix
+	}
+
 	switch block.GetType() {
 	case notionapi.BlockTypeParagraph:
-		result, err := paragraph(block)
+		result, err = paragraph(block)
 		if err != nil {
 			return nil, err
 		}
 
-		return aws.String(fmt.Sprintf("%s\n", result)), nil
+		result = fmt.Sprintf("%s%s\n", prefixstr, result)
 	case notionapi.BlockTypeHeading1, notionapi.BlockTypeHeading2, notionapi.BlockTypeHeading3:
-		result, err := heading(block)
+		result, err = heading(block)
 		if err != nil {
 			return nil, err
 		}
 
-		return aws.String(fmt.Sprintf("%s\n", result)), nil
+		result = fmt.Sprintf("%s%s\n", prefixstr, result)
 	case notionapi.BlockTypeCode:
-		result, err := code(page, block)
+		result, err = code(page, block)
 		if err != nil {
 			return nil, err
 		}
 
-		return aws.String(fmt.Sprintf("%s\n", *result)), nil
+		result = fmt.Sprintf("%s%s\n", prefixstr, result)
 	case notionapi.BlockTypeBulletedListItem:
-		result, err := bulletedList(block)
+		result, err = bulletedList(block)
 		if err != nil {
 			return nil, err
 		}
 
-		return aws.String(fmt.Sprintf("%s\n", result)), nil
+		result = fmt.Sprintf("%s%s\n", prefixstr, result)
 	default:
 		return nil, fmt.Errorf("currently do not support %s", block.GetType())
 	}
+
+	return &result, nil
 }
 
 func Build(page *notionapi.Page, blocks []notionapi.Block) (*string, error) {
 	for _, block := range blocks {
-		str, err := stringFromBlock(page, block)
+		str, err := stringFromBlock(page, block, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -149,22 +159,22 @@ func heading(block notionapi.Block) (string, error) {
 	return sb.String(), nil
 }
 
-func code(page *notionapi.Page, block notionapi.Block) (*string, error) {
+func code(page *notionapi.Page, block notionapi.Block) (string, error) {
 	codeBlock := block.(*notionapi.CodeBlock)
 	filename := createGistFilename(page, block)
 	gist, err := createOrUpdateGist(filename, codeBlock)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	username, err := authenticatedGithubUsername()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	gistString := fmt.Sprintf("{{< gist %s %s >}}", *username, *gist.ID)
 
-	return &gistString, nil
+	return gistString, nil
 }
 
 func createGistFilename(page *notionapi.Page, block notionapi.Block) string {

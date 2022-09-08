@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/gookit/config/v2"
@@ -17,6 +18,14 @@ import (
 var PWD string
 
 func main() {
+	if PWD == "" { // not installed or built, running `go run`, assume they are in the root dir
+		d, err := os.Getwd()
+		if err != nil {
+			log.Error(err)
+		}
+		PWD = d
+	}
+
 	pageTitle := flag.String("title", "", "The complete title of the Notion article you're ready to publish")
 	statusProperty := flag.String("status-property", "Status", "The name of the `status` property to look for a specific article in")
 	status := flag.String("status", "", "The value of the status in which the desired article is found")

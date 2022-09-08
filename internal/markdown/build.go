@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/jomei/notionapi"
@@ -13,7 +14,8 @@ var (
 
 func Build(page *notionapi.Page, blocks []notionapi.Block) (*string, error) {
 	for _, block := range blocks {
-		block.GetType()
+		// bt := block.GetType()
+		// fmt.Println(bt)
 		switch block.GetType() {
 		case notionapi.BlockTypeParagraph:
 			str, err := paragraph(block)
@@ -36,6 +38,13 @@ func Build(page *notionapi.Page, blocks []notionapi.Block) (*string, error) {
 			}
 
 			pageBuilder.WriteString(*str)
+		case notionapi.BlockTypeBulletedListItem:
+			str, err := bulletedList(block)
+			if err != nil {
+				return nil, err
+			}
+
+			pageBuilder.WriteString(str)
 		default:
 			return nil, fmt.Errorf("currently do not support %s", block.GetType())
 		}
@@ -54,6 +63,47 @@ func TitleFromPage(page *notionapi.Page) string {
 	return title
 }
 
+func addTextModifications(richtext notionapi.RichText) string {
+	// guard against non-text type of paragraphs
+	text := richtext.Text.Content
+
+	if richtext.Annotations.Bold {
+		text = boldify(text)
+	}
+
+	if richtext.Annotations.Italic {
+		text = italicize(text)
+	}
+
+	if richtext.Annotations.Strikethrough {
+		text = strike(text)
+	}
+
+	if richtext.Annotations.Code {
+		text = codify(text)
+	}
+
+	if richtext.Text.Link != nil && richtext.Text.Link.Url != "" {
+		text = linkify(text, richtext.Text.Link.Url)
+	}
+
+	return text
+}
+
+func bulletedList(block notionapi.Block) (string, error) {
+	blb := block.(*notionapi.BulletedListItemBlock)
+	var sb strings.Builder
+	sb.WriteString("* ")
+
+	// TODO: iterate over `BulletedListItem.Children` for nested bullets
+	for _, bulletBlock := range blb.BulletedListItem.RichText {
+		text := addTextModifications(bulletBlock)
+		sb.WriteString(text)
+	}
+
+	return sb.String(), nil
+}
+
 func paragraph(block notionapi.Block) (string, error) {
 	pb := block.(*notionapi.ParagraphBlock)
 	var sb strings.Builder
@@ -63,29 +113,7 @@ func paragraph(block notionapi.Block) (string, error) {
 	}
 
 	for _, textBlock := range pb.Paragraph.RichText {
-		// guard against non-text type of paragraphs
-		text := textBlock.Text.Content
-
-		if textBlock.Annotations.Bold {
-			text = boldify(text)
-		}
-
-		if textBlock.Annotations.Italic {
-			text = italicize(text)
-		}
-
-		if textBlock.Annotations.Strikethrough {
-			text = strike(text)
-		}
-
-		if textBlock.Annotations.Code {
-			text = codify(text)
-		}
-
-		if textBlock.Text.Link != nil && textBlock.Text.Link.Url != "" {
-			text = linkify(text, textBlock.Text.Link.Url)
-		}
-
+		text := addTextModifications(textBlock)
 		sb.WriteString(text)
 	}
 
@@ -168,8 +196,15 @@ func linkify(text, URL string) string {
 	return fmt.Sprintf("[%s](%s)", text, URL)
 }
 
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9 ]+`)
+
+func clearString(str string) string {
+	return nonAlphanumericRegex.ReplaceAllString(str, "")
+}
+
 func ToSnakeCase(str string) string {
-	spaces := strings.ReplaceAll(str, " ", "_")
+	onlyalphanumeric := clearString(str)
+	spaces := strings.ReplaceAll(onlyalphanumeric, " ", "_")
 	dashes := strings.ReplaceAll(spaces, "-", "_")
 	return strings.ToLower(dashes)
 }

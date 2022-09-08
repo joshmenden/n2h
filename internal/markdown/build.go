@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/jomei/notionapi"
 )
 
@@ -12,44 +13,49 @@ var (
 	pageBuilder strings.Builder
 )
 
-func Build(page *notionapi.Page, blocks []notionapi.Block) (*string, error) {
-	for _, block := range blocks {
-		// bt := block.GetType()
-		// fmt.Println(bt)
-		switch block.GetType() {
-		case notionapi.BlockTypeParagraph:
-			str, err := paragraph(block)
-			if err != nil {
-				return nil, err
-			}
-
-			pageBuilder.WriteString(str)
-		case notionapi.BlockTypeHeading1, notionapi.BlockTypeHeading2, notionapi.BlockTypeHeading3:
-			str, err := heading(block)
-			if err != nil {
-				return nil, err
-			}
-
-			pageBuilder.WriteString(str)
-		case notionapi.BlockTypeCode:
-			str, err := code(page, block)
-			if err != nil {
-				return nil, err
-			}
-
-			pageBuilder.WriteString(*str)
-		case notionapi.BlockTypeBulletedListItem:
-			str, err := bulletedList(block)
-			if err != nil {
-				return nil, err
-			}
-
-			pageBuilder.WriteString(str)
-		default:
-			return nil, fmt.Errorf("currently do not support %s", block.GetType())
+func stringFromBlock(page *notionapi.Page, block notionapi.Block) (*string, error) {
+	switch block.GetType() {
+	case notionapi.BlockTypeParagraph:
+		result, err := paragraph(block)
+		if err != nil {
+			return nil, err
 		}
 
-		pageBuilder.WriteString("\n")
+		return aws.String(fmt.Sprintf("%s\n", result)), nil
+	case notionapi.BlockTypeHeading1, notionapi.BlockTypeHeading2, notionapi.BlockTypeHeading3:
+		result, err := heading(block)
+		if err != nil {
+			return nil, err
+		}
+
+		return aws.String(fmt.Sprintf("%s\n", result)), nil
+	case notionapi.BlockTypeCode:
+		result, err := code(page, block)
+		if err != nil {
+			return nil, err
+		}
+
+		return aws.String(fmt.Sprintf("%s\n", *result)), nil
+	case notionapi.BlockTypeBulletedListItem:
+		result, err := bulletedList(block)
+		if err != nil {
+			return nil, err
+		}
+
+		return aws.String(fmt.Sprintf("%s\n", result)), nil
+	default:
+		return nil, fmt.Errorf("currently do not support %s", block.GetType())
+	}
+}
+
+func Build(page *notionapi.Page, blocks []notionapi.Block) (*string, error) {
+	for _, block := range blocks {
+		str, err := stringFromBlock(page, block)
+		if err != nil {
+			return nil, err
+		}
+
+		pageBuilder.WriteString(*str)
 	}
 
 	finalString := pageBuilder.String()

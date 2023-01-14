@@ -1,5 +1,9 @@
 # n2h — Notion to Hugo
 
+An installable Golang library for converting your Notion pages into a markdown file in your Hugo blog.
+
+## Background
+
 I love writing in Notion! But want to keep my Hugo blog alive. This is my solution.
 
 For a more comprehensive breakdown of this project, check out my blog post [Write in Notion, Publish with Hugo](https://livingissodear.com/posts/write_in_notion_publish_with_hugo_introducing_n2h/).

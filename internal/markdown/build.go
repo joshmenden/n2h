@@ -101,6 +101,7 @@ func TitleFromPage(page *notionapi.Page) string {
 func addTextModifications(richtext notionapi.RichText) string {
 	// guard against non-text type of paragraphs
 	text := richtext.Text.Content
+	text = strings.TrimSpace(text)
 
 	if richtext.Annotations.Bold {
 		text = boldify(text)

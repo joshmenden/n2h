@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	pageBuilder strings.Builder
+	pageBuilder       strings.Builder
+	numberedListIndex = 0
 )
 
 func stringFromBlock(page *notionapi.Page, block notionapi.Block, prefix *string) (*string, error) {
@@ -22,6 +23,10 @@ func stringFromBlock(page *notionapi.Page, block notionapi.Block, prefix *string
 		prefixstr = ""
 	} else {
 		prefixstr = *prefix
+	}
+
+	if block.GetType() != notionapi.BlockTypeNumberedListItem {
+		numberedListIndex = 0
 	}
 
 	switch block.GetType() {
@@ -48,6 +53,13 @@ func stringFromBlock(page *notionapi.Page, block notionapi.Block, prefix *string
 		result = fmt.Sprintf("%s%s\n", prefixstr, result)
 	case notionapi.BlockTypeBulletedListItem:
 		result, err = bulletedList(block)
+		if err != nil {
+			return nil, err
+		}
+
+		result = fmt.Sprintf("%s%s\n", prefixstr, result)
+	case notionapi.BlockTypeNumberedListItem:
+		result, err = numberedList(block)
 		if err != nil {
 			return nil, err
 		}
@@ -133,6 +145,21 @@ func bulletedList(block notionapi.Block) (string, error) {
 
 	// TODO: iterate over `BulletedListItem.Children` for nested bullets
 	for _, bulletBlock := range blb.BulletedListItem.RichText {
+		text := addTextModifications(bulletBlock)
+		sb.WriteString(text)
+	}
+
+	return sb.String(), nil
+}
+
+func numberedList(block notionapi.Block) (string, error) {
+	numberedListIndex += 1
+	blb := block.(*notionapi.NumberedListItemBlock)
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("%v. ", numberedListIndex))
+
+	// TODO: iterate over `NumberedListItem.Children` for nested bullets
+	for _, bulletBlock := range blb.NumberedListItem.RichText {
 		text := addTextModifications(bulletBlock)
 		sb.WriteString(text)
 	}

@@ -65,6 +65,11 @@ func stringFromBlock(page *notionapi.Page, block notionapi.Block, prefix *string
 		}
 
 		result = fmt.Sprintf("%s%s\n", prefixstr, result)
+	case notionapi.BlockQuote:
+		result, err = quote(block)
+		if err != nil {
+			return nil, err
+		}
 	default:
 		return nil, fmt.Errorf("currently do not support %s", block.GetType())
 	}
@@ -161,6 +166,24 @@ func numberedList(block notionapi.Block) (string, error) {
 	// TODO: iterate over `NumberedListItem.Children` for nested bullets
 	for _, bulletBlock := range blb.NumberedListItem.RichText {
 		text := addTextModifications(bulletBlock)
+		sb.WriteString(text)
+	}
+
+	return sb.String(), nil
+}
+
+func quote(block notionapi.Block) (string, error) {
+	qb := block.(*notionapi.QuoteBlock)
+	var sb strings.Builder
+
+	if len(qb.Quote.RichText) == 0 {
+		return "", nil
+	}
+
+	sb.WriteString(">")
+
+	for _, textBlock := range qb.Quote.RichText {
+		text := addTextModifications(textBlock)
 		sb.WriteString(text)
 	}
 
